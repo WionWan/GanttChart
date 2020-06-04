@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+
+
+<!-- 
+1、要动态算一下个数 几组数据，#container 的height 就要*85 得到height 高画图
+2、样式没有用sass  最好要区分用sass 区分一下
+3、现在是每一个单行算一组数据，为了保证样子，真实的时间数据出来，需要xAxis、splitNumber多切分几份，目前只有20份
+4、echarts 中的api() 是echarts自带的方法，需要引入文件到本地
+5、tooltip 需要格式化一下，现在看到的是毫秒数据
+6、var categories = ['设备1计划', '设备1实际', 'blank', '设备2计划', '设备2实际', 'blank'];为了空一行保证echarts不断，你每组数据后需要动态注入一个blank，作为区分
+ -->
+<head>
+    <meta charset="utf-8">
+    <style type="text/css">
+    body {
+        background: #2A373E;
+    }
+
+    .chart {
+        position: relative;
+    }
+
+    .title {
+        position: absolute;
+        display: inline-block;
+        width: 23%;
+        font-size: 14px;
+
+    }
+
+    .facility:first-child {
+        margin-top: 30px;
+    }
+
+    .name {
+        height: 70px;
+        background: #2A373E;
+        font-size: 20px;
+        color: #fff;
+        margin-left: 20px;
+        line-height: 70px;
+    }
+
+    .facility-name {
+        vertical-align: middle;
+        line-height: 70px;
+        text-align: left;
+        color: #fff;
+        position: relative;
+        padding-left: 36px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+
+    .facility-name:nth-child(1) {
+        background: #233037;
+        height: 70px;
+    }
+
+    .facility-name::after {
+        content: "";
+        display: inline-block;
+        height: 100%;
+        width: 2px;
+        background: #3C4E58;
+        position: absolute;
+        left: 20px;
+    }
+
+    .facility-name::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #3E535E;
+        left: 16px;
+        position: absolute;
+        z-index: 2;
+        margin-top: 31px;
+        border-radius: 5px;
+    }
+
+    .facility-name:nth-child(2) {
+        height: 70px;
+        background: #1D2930;
+
+    }
+
+    .facility-name:nth-child(2)::before {
+        background: #409EFB;
+
+
+    }
+
+
+    .group {}
+
+    #container {
+        float: right;
+        display: inline-block;
+        height: 510px;
+        width: 80%;
+    }
+    </style>
+</head>
+
+<body style="height: 100%; margin: 0">
+    <div class="chart">
+        <div class="title">
+            <div class="facility">
+                <div class="name">
+                    任务一
+                </div>
+                <div class="group">
+                    <div class="facility-name">子任务1进度
+                    </div>
+                    <div class="facility-name">子任务2进度
+                    </div>
+                </div>
+            </div>
+            <div class="facility">
+                <div class="name">
+                    任务二
+                </div>
+                <div class="group">
+                    <div class="facility-name">子任务1进度
+                    </div>
+                    <div class="facility-name">子任务2进度
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 分组 -->
+        <div id="container"></div>
+    </div>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts.min.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts-gl/echarts-gl.min.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts-stat/ecStat.min.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/dataTool.min.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/simplex.js"></script>
+    <script type="text/javascript">
+    var dom = document.getElementById("container");
+    var myChart = echarts.init(dom);
+    var app = {};
+    option = null;
+
+    var data = [];
+    var dataCount = 10;
+    var startTime = +new Date();
+    var categories = ['设备1计划', '设备1实际', 'blank', '设备2计划', '设备2实际', 'blank'];
+    var types = [
+        { name: 'JS Heap', color: '#3b67bd' },
+        { name: 'Documents', color: '#5c7dbe' },
+        { name: 'Nodes', color: '#8ba2d0' },
+        { name: 'Listeners', color: '#409eff' },
+        { name: 'GPU Memory', color: '#b9c7e3' },
+        { name: 'GPU', color: '#3b67bd' }
+    ];
+
+    // Generate mock data
+    echarts.util.each(categories, function(category, index) {
+        var baseTime = startTime;
+        if (category !== "blank") {
+            for (var i = 0; i < dataCount; i++) {
+                var typeItem = types[Math.round(Math.random() * (types.length - 1))];
+                var duration = Math.round(Math.random() * 10000);
+                data.push({
+                    name: typeItem.name,
+                    value: [
+                        index,
+                        baseTime,
+                        baseTime += duration,
+                        duration
+                    ],
+                    itemStyle: {
+                        normal: {
+                            color: typeItem.color
+                        }
+                    }
+                });
+                baseTime += Math.round(Math.random() * 2000);
+            }
+        }
+
+    });
+
+    function renderItem(params, api) {
+        var categoryIndex = api.value(0);
+        var start = api.coord([api.value(1), categoryIndex]);
+        var end = api.coord([api.value(2), categoryIndex]);
+        var height = 45;
+        var rectShape = echarts.graphic.clipRectByRect({
+            x: start[0],
+            y: start[1] - height / 2,
+            width: end[0] - start[0],
+            height: height
+        }, {
+            x: params.coordSys.x,
+            y: params.coordSys.y,
+            width: params.coordSys.width,
+            height: params.coordSys.height
+        });
+        return rectShape && {
+            type: 'rect',
+            shape: rectShape,
+            style: api.style(),
+            opacity: 0,
+        };
+    }
+
+
+    option = {
+        tooltip: {
+            formatter: function(params) {
+                return params.marker + params.name + ': ' + params.value[3] + ' ms';
+            }
+        },
+        title: {
+            text: 'Profile',
+            left: 'center'
+        },
+        grid: {
+            left: 20,
+            right: 20,
+            top: 30,
+        },
+        xAxis: {
+            type: 'time',
+            min: startTime,
+            minInterval: 1000,
+            maxInterval: 3600 * 1000,
+            scale: true,
+            position: 'top',
+            splitNumber: 20,
+            axisTick: {
+                lineStyle: {
+                    color: "#fff"
+                }
+            },
+            axisLabel: {
+                color: "#fff",
+                formatter: function(val) {
+                    //return Math.max(0, val - startTime) + ' ms';
+                    return new Date(val).getHours() + ':' + new Date(val).getMinutes() + ':' + new Date(val).getSeconds()
+                }
+            },
+            splitLine: {
+                lineStyle: {
+                    color: 'rgba(85, 110, 122, 0.45)'
+                }
+            }
+        },
+        yAxis: {
+            data: categories,
+            splitArea: {
+                show: true,
+                areaStyle: {
+                    color: ['#1D2930', '#233037', "#2A373E"],
+                }
+            },
+            axisLabel: {
+                show: false,
+            },
+            axisTick: {
+                show: false,
+            }
+        },
+        series: [{
+            type: 'custom',
+            renderItem: renderItem,
+            itemStyle: {
+                normal: {
+                    opacity: 0.8,
+                }
+            },
+            encode: {
+                x: [1, 2],
+                y: 0
+            },
+            data: data
+        }]
+    };;
+    if (option && typeof option === "object") {
+        myChart.setOption(option, true);
+    }
+    </script>
+</body>
+
+</html>
